@@ -219,12 +219,8 @@ for rot, val in (("Disciplina: ", "Banco de Dados"), ("Data: ", "19/11/2026")):
     fonte(p.add_run(rot), cor=ESCURO, negrito=True, tam=13)
     fonte(p.add_run(val), tam=13)
 p = doc.add_paragraph()
-fonte(p.add_run("Integrantes:"), cor=ESCURO, negrito=True, tam=13)
-for k in range(4):
-    p = doc.add_paragraph()
-    p.paragraph_format.left_indent = Cm(0.01 * k)  # indentes distintos evitam que o Word funda as bordas
-    borda_inferior(p, CINZA, 4)
-    p.paragraph_format.space_before = Pt(14)
+fonte(p.add_run("Integrantes: "), cor=ESCURO, negrito=True, tam=13)
+fonte(p.add_run("Heitor Shiniti Miasato"), tam=13)
 quebra()
 
 # ---------------------------------------------------------------- 1
