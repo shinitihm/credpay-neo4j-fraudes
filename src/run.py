@@ -1,5 +1,4 @@
-import json, pathlib, sys
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
+import json, pathlib
 from db import get_driver, run
 
 ROOT = pathlib.Path(__file__).parent.parent
@@ -13,12 +12,9 @@ ESPERADO = {  # chave esperada por consulta (controles negativos ficam de fora)
     "q7_passagem_rapida": ["A027"],
 }
 
-def iso(v):
-    return v.isoformat() if hasattr(v, "isoformat") else v
-
 d = get_driver()
 for f in ["01_schema", "02_carga"]:
-    for stmt in (ROOT / "cypher" / f"{f}.cypher").read_text(encoding="utf-8").split(";\n"):
+    for stmt in (ROOT / "cypher" / f"{f}.cypher").read_text(encoding="utf-8").split(";"):
         if stmt.strip():
             run(d, stmt)
 
@@ -31,9 +27,10 @@ print(contagem)
 resultados = {}
 for nome, esp in ESPERADO.items():
     linhas = run(d, (ROOT / "cypher" / f"03_{nome}.cypher").read_text(encoding="utf-8"))
-    linhas = [{k: iso(v) for k, v in l.items()} for l in linhas]
     resultados[nome] = linhas
     print(nome, linhas)
+    if nome == "q4_ciclo":
+        assert "Endereco" in linhas[0]["vinculos"], linhas
     assert sorted(l["chave"] for l in linhas) == esp, f"{nome}: esperado {esp}, obtido {linhas}"
 d.close()
 

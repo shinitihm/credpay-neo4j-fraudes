@@ -1,6 +1,4 @@
 .env
-*.local
 DECISOES.md
-node_modules/
 __pycache__/
 .venv/

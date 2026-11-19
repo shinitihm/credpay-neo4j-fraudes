@@ -4,8 +4,10 @@ UNWIND [i IN range(1,32) WHERE NOT i IN [12,18]] AS i
 CREATE (:Cliente {id:'C'+right('000'+toString(i),3),
   nome: CASE i WHEN 1 THEN 'Ana' WHEN 2 THEN 'Bruno' WHEN 3 THEN 'Carlos' WHEN 4 THEN 'Daniela' ELSE 'Cliente '+toString(i) END,
   cpf:'***.***.***-**'});
+// A012 e A018 pertencem aos clientes C011 e C017 (duas contas do mesmo cliente: controles negativos).
 UNWIND range(1,32) AS i
-MATCH (c:Cliente {id: 'C'+right('000'+toString(CASE i WHEN 12 THEN 11 WHEN 18 THEN 17 ELSE i END),3)})
+WITH i, CASE i WHEN 12 THEN 11 WHEN 18 THEN 17 ELSE i END AS cli
+MATCH (c:Cliente {id: 'C'+right('000'+toString(cli),3)})
 CREATE (c)-[:TITULAR_DE]->(:Conta {id:'A'+right('000'+toString(i),3), tipo:'Corrente',
   criada_em: CASE WHEN i=13 THEN datetime('2026-11-15T00:00:00') WHEN i<=4 THEN datetime('2023-01-01T00:00:00') ELSE datetime('2024-06-01T00:00:00') END});
 UNWIND [
@@ -19,10 +21,10 @@ UNWIND [
 MATCH (o:Conta {id:t[1]}), (d:Conta {id:t[2]})
 CREATE (o)-[:TRANSFERIU {id:t[0], valor:t[3], data:datetime(t[4])}]->(d);
 UNWIND [['D1',['A005','A006','A007']],['D2',['A001']],['D3',['A008']],['D4',['A011','A012']]] AS x
-MERGE (d:Dispositivo {id:x[0]}) WITH d, x UNWIND x[1] AS a MATCH (c:Conta {id:a}) CREATE (c)-[:ACESSOU_DE]->(d);
+CREATE (d:Dispositivo {id:x[0]}) WITH d, x UNWIND x[1] AS a MATCH (c:Conta {id:a}) CREATE (c)-[:ACESSOU_DE]->(d);
 UNWIND [['203.0.113.10',['A009','A010']],['198.51.100.7',['A011','A012']],['192.0.2.1',['A001']]] AS x
-MERGE (p:IP {id:x[0]}) WITH p, x UNWIND x[1] AS a MATCH (c:Conta {id:a}) CREATE (c)-[:USOU_IP]->(p);
+CREATE (p:IP {id:x[0]}) WITH p, x UNWIND x[1] AS a MATCH (c:Conta {id:a}) CREATE (c)-[:USOU_IP]->(p);
 UNWIND [['K1',['A015','A016']],['K2',['A017','A018']],['K3',['A001']]] AS x
-MERGE (k:Cartao {id:x[0]}) WITH k, x UNWIND x[1] AS a MATCH (c:Conta {id:a}) CREATE (c)-[:USA_CARTAO]->(k);
+CREATE (k:Cartao {id:x[0]}) WITH k, x UNWIND x[1] AS a MATCH (c:Conta {id:a}) CREATE (c)-[:USA_CARTAO]->(k);
 UNWIND [['E1',['C001','C002']],['E2',['C003']],['E3',['C004']]] AS x
-MERGE (e:Endereco {id:x[0]}) WITH e, x UNWIND x[1] AS cid MATCH (c:Cliente {id:cid}) CREATE (c)-[:MORA_EM]->(e);
+CREATE (e:Endereco {id:x[0]}) WITH e, x UNWIND x[1] AS cid MATCH (c:Cliente {id:cid}) CREATE (c)-[:MORA_EM]->(e);

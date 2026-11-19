@@ -56,14 +56,14 @@ doc = Document()
 sec = doc.sections[0]
 sec.page_width, sec.page_height = Cm(21), Cm(29.7)
 sec.left_margin = sec.right_margin = Cm(2.5)
-sec.top_margin = sec.bottom_margin = Cm(2.3)
+sec.top_margin = sec.bottom_margin = Cm(2.0)
 
 normal = doc.styles["Normal"]
 normal.font.name = "Calibri"
 normal.font.size = Pt(11)
 normal.font.color.rgb = rgb(TEXTO)
 normal.paragraph_format.space_after = Pt(6)
-normal.paragraph_format.line_spacing = 1.15
+normal.paragraph_format.line_spacing = 1.1
 for nome, tam, cor in (("Heading 1", 18, ROXO), ("Heading 2", 13, ESCURO)):
     st = doc.styles[nome]
     st.font.name = "Calibri"
@@ -314,7 +314,7 @@ lista([("Dados do enunciado: ", "clientes C001 a C004, contas A001 a A004 e tran
         "dispositivo D1 e uma conta nova A013 recebendo de A005, A006 e A007)."),
        ("Controles negativos: ", "casos parecidos com fraude que não devem ser marcados, como duas contas do mesmo "
         "cliente no mesmo dispositivo, uma conta antiga recebendo de várias origens ou um repasse que demora duas horas.")])
-par("O CPF é um valor mascarado (não há dado pessoal real). A carga é idempotente: o script apaga o grafo e "
+par("O CPF é um valor mascarado (não há dado pessoal real). A carga é idempotente: o script apaga o grafo inteiro da instância e "
     "recarrega tudo, então pode ser repetido sem duplicar dados. Contagens após a carga (tabela 3):")
 par("Tabela 3: contagem de nós e relacionamentos.", italico=True, cor=CINZA, tam=9).paragraph_format.keep_with_next = True
 n, a = cont["nos"], cont["arestas"]
@@ -332,9 +332,9 @@ par("Para cada consulta mostramos o padrão de fraude, o código Cypher, o resul
 
 Q = [
     ("q1_dispositivo_compartilhado", "03_q1_dispositivo_compartilhado", "Consulta 1: dispositivo compartilhado",
-     "Vários clientes diferentes acessando contas pelo mesmo aparelho, indício de uma pessoa controlando contas de terceiros ou de uma fábrica de contas.",
+     "Três ou mais contas, de pelo menos dois clientes diferentes, acessadas pelo mesmo aparelho, indício de uma pessoa controlando contas de terceiros ou de uma fábrica de contas.",
      "O dispositivo D1 é usado por três clientes (C005, C006 e C007), cada um com sua conta. É o caso clássico de uma pessoa operando várias identidades.",
-     "O dispositivo D4 tem duas contas (A011 e A012), mas ambas são do mesmo cliente C011. A consulta conta clientes distintos (size(clientes) >= 2), não contas, então D4 não aparece."),
+     "O dispositivo D4 tem duas contas (A011 e A012), mas ambas são do mesmo cliente C011. A consulta exige ao menos dois clientes distintos e três contas, então D4 não aparece."),
     ("q2_ip_compartilhado", "03_q2_ip_compartilhado", "Consulta 2: IP compartilhado",
      "Clientes diferentes usando o mesmo endereço IP.",
      "O IP 203.0.113.10 foi usado pelos clientes C009 e C010. Dois clientes no mesmo IP merecem revisão, ainda que possa haver explicação legítima (casa ou escritório).",
@@ -345,19 +345,19 @@ Q = [
      "A conta A014 também recebe de três origens (A008, A009 e A010), mas foi criada em 2024. O filtro por criada_em (últimos 30 dias, com referência fixa em 19/11/2026) a exclui."),
     ("q4_ciclo", "03_q4_ciclo", "Consulta 4: anel de transferências (ciclo)",
      "Dinheiro que sai de uma conta, passa por outras e volta à origem, o que pode simular movimentação sem motivo econômico.",
-     "A consulta encontra o ciclo do enunciado A001, A002, A003, A004 e de volta a A001. O filtro pelo menor id da lista faz com que o mesmo anel seja reportado uma única vez, e não quatro (uma por conta de partida).",
+     "A consulta encontra o ciclo do enunciado A001, A002, A003, A004 e de volta a A001. A exigência de datas crescentes ao longo do caminho (e de nenhuma conta repetida) faz o anel ser reportado uma única vez, e não quatro (uma por conta de partida). A coluna vinculos mostra Endereco: C001 e C002, titulares de contas diferentes do anel, moram no mesmo endereço E1. Mesmo assim o anel é suspeito: o vínculo aparente não o torna legítimo.",
      "As cadeias abertas (como A019, A020, A021, A022) não retornam: não voltam à conta de partida. Não há ciclo falso, porque as demais transferências do dataset nunca fecham em um nó de origem."),
     ("q5_cartao_compartilhado", "03_q5_cartao_compartilhado", "Consulta 5: cartão compartilhado",
      "O mesmo cartão associado a contas de clientes diferentes, sinal de uso de cartão de terceiros.",
-     "O cartão K1 aparece nas contas A015 e A016, de C015 e C016.",
+     "O cartão K1 aparece nas contas A015 e A016, de C015 e C016. A consulta agrupa por cliente (e não por conta) porque o que indica uso de cartão de terceiros são titulares diferentes: um cliente com duas contas no mesmo cartão é comum.",
      "K2 está em duas contas, mas do mesmo cliente (C017), e K3 tem apenas uma conta. Nenhum dos dois atinge dois clientes distintos."),
     ("q6_cadeia_sem_historico", "03_q6_cadeia_sem_historico", "Consulta 6: cadeia entre pares sem histórico",
-     "Sequência de três transferências em até 24 horas entre contas que nunca tinham se relacionado antes (só existe uma transferência por par), típico de dinheiro sendo empurrado rapidamente por contas descartáveis.",
+     "Sequência de três transferências em até 24 horas entre contas sem nenhuma transferência anterior ao início da cadeia, típico de dinheiro sendo empurrado rapidamente por contas descartáveis.",
      "A cadeia A019, A020, A021, A022 ocorreu em 17/11/2026 entre 09h e 20h, com valores quase iguais (900, 880 e 860), ou seja, só uma pequena fatia ficou no caminho.",
      "A cadeia do enunciado (A001 a A004) não retorna: as transferências são espaçadas por dois dias, fora da janela de 24 horas."),
     ("q7_passagem_rapida", "03_q7_passagem_rapida", "Consulta 7: passagem rápida",
-     "A conta recebe e repassa o valor em poucos minutos, sem reter o dinheiro, comportamento de conta de passagem.",
-     "A conta A027 recebeu 1000 de A028 às 10h00 e repassou 980 a A029 às 10h04: quatro minutos depois, com valor um pouco menor.",
+     "A conta recebe e repassa quase todo o valor (80% a 100%) em poucos minutos, sem reter o dinheiro, comportamento de conta de passagem.",
+     "A conta A027 recebeu 1000 de A028 às 10h00 e repassou 980 a A029 às 10h04: quatro minutos depois, com 98% do valor (a consulta exige entre 80% e 100%).",
      "A conta A030 também recebe (de A031) e repassa (a A032), mas só duas horas depois, fora da janela de 10 minutos."),
 ]
 
@@ -392,7 +392,8 @@ lista([("Algoritmos de grafos (GDS): ", "o Neo4j Graph Data Science oferece dete
         "marcada. Os resultados devem ser tratados como alertas para análise humana, não como prova de fraude, "
         "e podem ser combinados em uma pontuação de risco."),
        ("Dados sintéticos: ", "como os cenários foram desenhados para ativar as consultas, os resultados mostram que "
-        "elas funcionam, não qual é a taxa real de acerto em dados de verdade.")])
+        "elas funcionam, não qual é a taxa real de acerto em dados de verdade."),
+       ("Carga destrutiva: ", "o script de carga apaga o banco inteiro da instância; deve ser usado apenas em uma instância de demonstração.")])
 
 # ---------------------------------------------------------------- 7
 titulo("7 Conclusão")

@@ -1,5 +1,5 @@
-neo4j
+neo4j>=5.8
 python-docx
-python-dotenv
 docx2pdf
+matplotlib
 certifi
