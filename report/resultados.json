@@ -1,0 +1,102 @@
+{
+  "contagem": {
+    "nos": {
+      "Cartao": 3,
+      "Cliente": 30,
+      "Conta": 32,
+      "Dispositivo": 4,
+      "Endereco": 3,
+      "IP": 3
+    },
+    "arestas": {
+      "ACESSOU_DE": 7,
+      "MORA_EM": 4,
+      "TITULAR_DE": 32,
+      "TRANSFERIU": 17,
+      "USA_CARTAO": 5,
+      "USOU_IP": 5
+    }
+  },
+  "consultas": {
+    "q1_dispositivo_compartilhado": [
+      {
+        "chave": "D1",
+        "clientes": [
+          "C005",
+          "C006",
+          "C007"
+        ],
+        "contas": [
+          "A005",
+          "A006",
+          "A007"
+        ]
+      }
+    ],
+    "q2_ip_compartilhado": [
+      {
+        "chave": "203.0.113.10",
+        "clientes": [
+          "C009",
+          "C010"
+        ],
+        "contas": [
+          "A009",
+          "A010"
+        ]
+      }
+    ],
+    "q3_conta_nova_recebendo": [
+      {
+        "chave": "A013",
+        "origens": [
+          "A005",
+          "A006",
+          "A007"
+        ]
+      }
+    ],
+    "q4_ciclo": [
+      {
+        "chave": "A001",
+        "ciclo": [
+          "A001",
+          "A002",
+          "A003",
+          "A004"
+        ]
+      }
+    ],
+    "q5_cartao_compartilhado": [
+      {
+        "chave": "K1",
+        "clientes": [
+          "C015",
+          "C016"
+        ],
+        "contas": [
+          "A015",
+          "A016"
+        ]
+      }
+    ],
+    "q6_cadeia_sem_historico": [
+      {
+        "chave": "A019",
+        "cadeia": [
+          "A019",
+          "A020",
+          "A021",
+          "A022"
+        ]
+      }
+    ],
+    "q7_passagem_rapida": [
+      {
+        "chave": "A027",
+        "origem": "A028",
+        "destino": "A029"
+      }
+    ]
+  }
+}
