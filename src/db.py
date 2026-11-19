@@ -8,8 +8,11 @@ def _env():
 
 def get_driver():
     _env()
+    uri = os.environ["NEO4J_URI"]
+    if uri.startswith("neo4j+s://"):
+        uri = "neo4j://" + uri[len("neo4j+s://"):]
     return neo4j.GraphDatabase.driver(
-        os.environ["NEO4J_URI"].replace("neo4j+s", "neo4j"),
+        uri,
         auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
         encrypted=True, trusted_certificates=neo4j.TrustCustomCAs(certifi.where()))
 

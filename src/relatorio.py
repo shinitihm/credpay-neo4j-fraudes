@@ -108,7 +108,7 @@ def codigo(txt):
         if i < len(linhas) - 1:
             pf.keep_with_next = True
         sombra(p._p.get_or_add_pPr(), CLARO)
-        fonte(p.add_run(ln if ln else " "), tam=9, nome="Consolas")
+        fonte(p.add_run(ln if ln else " "), tam=8, nome="Consolas")
     esp = doc.add_paragraph()
     esp.paragraph_format.space_after = Pt(2)
     esp.paragraph_format.keep_with_next = True
@@ -252,22 +252,31 @@ titulo("2 Por que grafos")
 par("No modelo relacional do enunciado, cada transferência é uma linha da tabela de transações, com conta de "
     "origem e conta de destino. Perguntar \"quem recebeu de quem\" é simples, mas perguntar \"essa conta "
     "voltou a receber o dinheiro que ela mesma enviou, passando por três intermediários?\" exige ligar a "
-    "tabela com ela mesma várias vezes (auto-joins). Cada salto a mais é um JOIN a mais, e o tamanho do anel "
-    "precisa ser conhecido de antemão.")
-par("Exemplo: ciclo de 4 saltos (A, B, C, D e de volta a A) em SQL.")
-codigo("""SELECT t1.conta_origem
+    "tabela com ela mesma. Com auto-joins fixos, é preciso saber de antemão o número de saltos.")
+par("Exemplo: ciclo de 4 saltos (A, B, C, D e de volta a A) com auto-joins em SQL.")
+codigo("""SELECT t1.origem
 FROM transacao t1
-JOIN transacao t2 ON t2.conta_origem = t1.conta_destino
-JOIN transacao t3 ON t3.conta_origem = t2.conta_destino
-JOIN transacao t4 ON t4.conta_origem = t3.conta_destino
-WHERE t4.conta_destino = t1.conta_origem;""")
-par("O mesmo padrão em Cypher é escrito como um caminho que começa e termina no mesmo nó, e o intervalo de "
-    "tamanhos (3 a 5 saltos) vira apenas um parâmetro:")
+JOIN transacao t2 ON t2.origem = t1.destino
+JOIN transacao t3 ON t3.origem = t2.destino
+JOIN transacao t4 ON t4.origem = t3.destino
+WHERE t4.destino = t1.origem;""")
+par("O SQL:1999 resolve a profundidade variável com WITH RECURSIVE. Em PostgreSQL, ciclos de 3 a 5 saltos "
+    "sem repetir conta (a ordem temporal não está incluída, para manter o exemplo curto):")
+codigo("""WITH RECURSIVE c(ini, atual, caminho, n) AS (
+  SELECT origem, destino, ARRAY[origem, destino], 1 FROM transacao
+  UNION ALL
+  SELECT c.ini, t.destino, c.caminho || t.destino, c.n + 1
+  FROM c JOIN transacao t ON t.origem = c.atual
+  WHERE c.n < 5 AND (t.destino = c.ini OR NOT t.destino = ANY(c.caminho))
+)
+SELECT * FROM c WHERE atual = ini AND n >= 3;""")
+par("O mesmo padrão em Cypher é escrito como um caminho que começa e termina no mesmo nó, com limite de "
+    "3 a 5 saltos (no Cypher esse limite do caminho variável é um literal):")
 codigo("MATCH p = (a:Conta)-[:TRANSFERIU*3..5]->(a)\nRETURN a.id, [n IN nodes(p) | n.id]")
-par("Além de mais curta, a versão em grafo é mais próxima da pergunta feita pelo analista de fraude. No "
-    "Neo4j os relacionamentos são guardados como ponteiros entre os nós, então seguir uma aresta não depende "
-    "de procurar chaves em índices a cada salto. Em SQL seria possível fazer o mesmo com CTE recursiva, "
-    "mas a consulta fica mais longa e mais difícil de ler e manter.")
+par("Portanto o grafo não traz uma capacidade que o SQL não tenha. A vantagem está na legibilidade (a consulta "
+    "se parece com a pergunta do analista), na travessia por adjacência, que segue ponteiros entre nós sem "
+    "buscar em índice a cada salto, e na possibilidade de misturar tipos de vínculo (dispositivo, IP, "
+    "cartão) no mesmo padrão.")
 par("Isso não significa que o banco relacional seja ruim: para cadastro, saldo e lançamentos contábeis ele "
     "continua sendo a escolha certa. O grafo entra como camada de análise de relações.")
 
@@ -313,7 +322,7 @@ lista([("Dados do enunciado: ", "clientes C001 a C004, contas A001 a A004 e tran
        ("Dados sintéticos de fraude: ", "um cenário para cada um dos demais padrões (por exemplo, três clientes no "
         "dispositivo D1 e uma conta nova A013 recebendo de A005, A006 e A007)."),
        ("Controles negativos: ", "casos parecidos com fraude que não devem ser marcados, como duas contas do mesmo "
-        "cliente no mesmo dispositivo, uma conta antiga recebendo de várias origens ou um repasse que demora duas horas.")])
+        "cliente no mesmo dispositivo, três contas do mesmo cliente no mesmo dispositivo, uma conta antiga recebendo de várias origens, um repasse que demora duas horas ou uma cadeia rápida cujo par de contas já havia transacionado.")])
 par("O CPF é um valor mascarado (não há dado pessoal real). A carga é idempotente: o script apaga o grafo inteiro da instância e "
     "recarrega tudo, então pode ser repetido sem duplicar dados. Contagens após a carga (tabela 3):")
 par("Tabela 3: contagem de nós e relacionamentos.", italico=True, cor=CINZA, tam=9).paragraph_format.keep_with_next = True
@@ -332,9 +341,9 @@ par("Para cada consulta mostramos o padrão de fraude, o código Cypher, o resul
 
 Q = [
     ("q1_dispositivo_compartilhado", "03_q1_dispositivo_compartilhado", "Consulta 1: dispositivo compartilhado",
-     "Três ou mais contas, de pelo menos dois clientes diferentes, acessadas pelo mesmo aparelho, indício de uma pessoa controlando contas de terceiros ou de uma fábrica de contas.",
-     "O dispositivo D1 é usado por três clientes (C005, C006 e C007), cada um com sua conta. É o caso clássico de uma pessoa operando várias identidades.",
-     "O dispositivo D4 tem duas contas (A011 e A012), mas ambas são do mesmo cliente C011. A consulta exige ao menos dois clientes distintos e três contas, então D4 não aparece."),
+     "Várias contas (três ou mais), de pelo menos dois clientes diferentes, acessadas pelo mesmo aparelho.",
+     "O dispositivo D1 é usado por três clientes (C005, C006 e C007), cada um com sua conta. Pode ser fraude (uma pessoa operando várias identidades), mas também família ou aparelho compartilhado, então o resultado é um alerta para revisão.",
+     "O dispositivo D4 tem duas contas (A011 e A012) do mesmo cliente C011, e não atinge três contas. O dispositivo D5 tem três contas (A040, A041 e A042), mas todas do mesmo cliente C040: isola o critério de dois ou mais clientes. Nenhum dos dois aparece."),
     ("q2_ip_compartilhado", "03_q2_ip_compartilhado", "Consulta 2: IP compartilhado",
      "Clientes diferentes usando o mesmo endereço IP.",
      "O IP 203.0.113.10 foi usado pelos clientes C009 e C010. Dois clientes no mesmo IP merecem revisão, ainda que possa haver explicação legítima (casa ou escritório).",
@@ -344,17 +353,17 @@ Q = [
      "A conta A013, criada em 15/11/2026, recebeu de A005, A006 e A007 em poucos dias. Note que essas três origens são justamente as contas que compartilham o dispositivo D1 (consulta 1): o cruzamento reforça a suspeita.",
      "A conta A014 também recebe de três origens (A008, A009 e A010), mas foi criada em 2024. O filtro por criada_em (últimos 30 dias, com referência fixa em 19/11/2026) a exclui."),
     ("q4_ciclo", "03_q4_ciclo", "Consulta 4: anel de transferências (ciclo)",
-     "Dinheiro que sai de uma conta, passa por outras e volta à origem, o que pode simular movimentação sem motivo econômico.",
-     "A consulta encontra o ciclo do enunciado A001, A002, A003, A004 e de volta a A001. A exigência de datas crescentes ao longo do caminho (e de nenhuma conta repetida) faz o anel ser reportado uma única vez, e não quatro (uma por conta de partida). A coluna vinculos mostra Endereco: C001 e C002, titulares de contas diferentes do anel, moram no mesmo endereço E1. Mesmo assim o anel é suspeito: o vínculo aparente não o torna legítimo.",
+     "Dinheiro que sai de uma conta, passa por outras e volta à origem, o que pode simular movimentação sem motivo econômico. Procuramos também grupos aparentemente sem relação entre si, por isso a consulta lista os vínculos compartilhados entre os titulares.",
+     "A consulta retorna dois anéis, os que vinculos vazio aparecem primeiro. O anel A037, A038, A039 não tem nenhum vínculo compartilhado entre os titulares (nem endereço, dispositivo, IP ou cartão): é o caso mais próximo de grupos aparentemente sem relação que movimentam dinheiro em círculo. O anel do enunciado (A001 a A004 e de volta a A001) tem vinculos Endereco: C001 e C002 moram no mesmo endereço E1. Isso pode indicar grupo coordenado ou apenas família; ambos os anéis merecem revisão humana. A exigência de datas crescentes ao longo do caminho é uma regra de negócio (segue o fluxo do dinheiro: cada repasse só ocorre depois de a conta receber) e, além disso, faz cada anel ser reportado uma única vez, e não uma por conta de partida (deduplica rotações). Nenhuma conta se repete no anel.",
      "As cadeias abertas (como A019, A020, A021, A022) não retornam: não voltam à conta de partida. Não há ciclo falso, porque as demais transferências do dataset nunca fecham em um nó de origem."),
     ("q5_cartao_compartilhado", "03_q5_cartao_compartilhado", "Consulta 5: cartão compartilhado",
      "O mesmo cartão associado a contas de clientes diferentes, sinal de uso de cartão de terceiros.",
      "O cartão K1 aparece nas contas A015 e A016, de C015 e C016. A consulta agrupa por cliente (e não por conta) porque o que indica uso de cartão de terceiros são titulares diferentes: um cliente com duas contas no mesmo cartão é comum.",
      "K2 está em duas contas, mas do mesmo cliente (C017), e K3 tem apenas uma conta. Nenhum dos dois atinge dois clientes distintos."),
     ("q6_cadeia_sem_historico", "03_q6_cadeia_sem_historico", "Consulta 6: cadeia entre pares sem histórico",
-     "Sequência de três transferências em até 24 horas entre contas sem nenhuma transferência anterior ao início da cadeia, típico de dinheiro sendo empurrado rapidamente por contas descartáveis.",
+     "Sequência de três transferências em até 24 horas em que cada par consecutivo de contas não tem nenhuma transferência anterior ao início da cadeia (em qualquer direção), típico de dinheiro sendo empurrado rapidamente por contas descartáveis.",
      "A cadeia A019, A020, A021, A022 ocorreu em 17/11/2026 entre 09h e 20h, com valores quase iguais (900, 880 e 860), ou seja, só uma pequena fatia ficou no caminho.",
-     "A cadeia do enunciado (A001 a A004) não retorna: as transferências são espaçadas por dois dias, fora da janela de 24 horas."),
+     "A cadeia do enunciado (A001 a A004) não retorna: as transferências são espaçadas por dois dias, fora da janela de 24 horas. A cadeia A033, A034, A035, A036 ocorre em menos de 24 horas, mas A035 já havia transferido para A034 antes (em 01/11/2026): falha só pelo histórico do par, pois a verificação é feita por par consecutivo."),
     ("q7_passagem_rapida", "03_q7_passagem_rapida", "Consulta 7: passagem rápida",
      "A conta recebe e repassa quase todo o valor (80% a 100%) em poucos minutos, sem reter o dinheiro, comportamento de conta de passagem.",
      "A conta A027 recebeu 1000 de A028 às 10h00 e repassou 980 a A029 às 10h04: quatro minutos depois, com 98% do valor (a consulta exige entre 80% e 100%).",
@@ -385,7 +394,10 @@ lista([("Algoritmos de grafos (GDS): ", "o Neo4j Graph Data Science oferece dete
         "componentes conexos que encontrariam grupos suspeitos sem definir o padrão antes. O plano gratuito do Aura "
         "não inclui a biblioteca, por isso ficou fora do protótipo."),
        ("Escala: ", "o dataset tem poucas dezenas de nós. Com milhões de clientes, consultas de caminho de tamanho "
-        "variável precisariam de limites de profundidade, índices nas propriedades usadas nos filtros e testes de desempenho."),
+        "variável precisariam de limites de profundidade, índices nas propriedades usadas nos filtros e testes de desempenho. "
+        "Mesmo com adjacência direta, a busca ainda usa índice ou varredura de rótulo para achar o nó âncora, e o "
+        "custo dominante em ciclos é a explosão de caminhos (grau elevado à potência k), que afeta qualquer modelo. "
+        "Para mitigar: ancorar a consulta em contas específicas, usar janela de tempo e criar índice em TRANSFERIU(data)."),
        ("Janela de tempo: ", "os limites (30 dias, 24 horas, 10 minutos) foram escolhidos por nós e usam uma data de "
         "referência fixa. Em produção seriam parâmetros calibrados com dados reais e a data atual."),
        ("Falsos positivos: ", "uma família que divide o mesmo roteador ou um escritório com um único IP também seria "
@@ -400,8 +412,8 @@ titulo("7 Conclusão")
 par("O protótipo mostrou que um modelo de grafo expressa de forma natural as relações que importam para a "
     "detecção de fraude. Os sete padrões do enunciado viraram consultas Cypher curtas, e cada uma retornou o "
     "caso fraudulento esperado e deixou de fora o controle negativo correspondente, o que dá mais confiança de "
-    "que o filtro faz o que promete. A comparação com SQL ilustra a vantagem principal: ciclos e cadeias, "
-    "que exigem auto-joins no modelo relacional, são apenas padrões de caminho no grafo.")
+    "que o filtro faz o que promete. A comparação com SQL mostra que o ganho do grafo é de legibilidade e de "
+    "travessia por adjacência, não de capacidade: ciclos e cadeias também são possíveis com WITH RECURSIVE.")
 par("Como próximos passos, o mais valioso seria testar com dados reais anonimizados, calibrar os limites e "
     "combinar as consultas em uma pontuação de risco por conta.")
 

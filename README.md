@@ -33,7 +33,7 @@ python src/relatorio.py  # relatório (o PDF usa o Word, via docx2pdf)
 
 **Atenção:** `python src/run.py` apaga TODO o banco da instância antes de recarregar. Use só uma instância de demonstração.
 
-**Certificado:** `src/db.py` troca `neo4j+s` por `neo4j` com `encrypted=True` e `TrustCustomCAs(certifi.where())`, contornando erros de certificado em redes que interceptam TLS.
+**Certificado:** `src/db.py` converte `neo4j+s://` em `neo4j://` e passa `encrypted=True` com `TrustCustomCAs(certifi.where())`. O `certifi` traz as autoridades certificadoras públicas e resolve o caso de instalações do Python no Windows sem repositório de CAs confiável; não serve para contornar proxy que intercepta TLS.
 
 ## Padrões e consultas
 
