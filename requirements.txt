@@ -1,0 +1,5 @@
+neo4j
+python-docx
+python-dotenv
+docx2pdf
+certifi
